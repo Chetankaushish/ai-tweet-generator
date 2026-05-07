@@ -1,58 +1,95 @@
 # ============================================================
-# Tweet Generator - Main Application
-# A Streamlit app that generates tweets using Google's Gemini
-# AI model, orchestrated through LangChain.
+# Tweet Generator - Streamlit + Gemini + LangChain
 # ============================================================
 
 # --- Imports ---
-# LangChain components for LLM interaction and prompt management
+import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-# Streamlit for the web UI, os for environment variable management
-import streamlit as st
-import os
+# ============================================================
+# Page Config
+# ============================================================
 
-# --- API Key Configuration ---
-# Load the Google API key from Streamlit's secrets manager
-# and set it as an environment variable for the Google GenAI client.
-# The key should be defined in .streamlit/secrets.toml
-os.environ['GOOGLE_API_KEY'] = st.secrets['GOOGLE_API_KEY']
+st.set_page_config(
+    page_title="AI Tweet Generator",
+    page_icon="🐦"
+)
 
-# --- Prompt Template ---
-# Define the prompt template with placeholders for the number of tweets
-# and the topic. LangChain's PromptTemplate handles variable substitution.
-tweet_template = "Give me {number} tweets on {topic}"
+# ============================================================
+# API Key
+# ============================================================
 
-tweet_prompt = PromptTemplate(template = tweet_template, input_variables = ['number', 'topic'])
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
-# --- Model Initialization ---
-# Initialize Google's Gemini 1.5 Flash model via LangChain's
-# ChatGoogleGenerativeAI wrapper. Flash is optimized for speed and efficiency.
-gemini_model = ChatGoogleGenerativeAI(model = "gemini-1.5-flash-latest")
+# ============================================================
+# Gemini Model
+# ============================================================
 
-# --- LangChain Pipeline ---
-# Chain the prompt template and model together using LangChain's pipe operator.
-# When invoked, the prompt is formatted first, then passed to the model.
-tweet_chain = tweet_prompt | gemini_model
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    google_api_key=GOOGLE_API_KEY,
+    temperature=0.7
+)
 
-# --- Streamlit UI ---
-# Page header and description
-import streamlit as st
+# ============================================================
+# Prompt Template
+# ============================================================
 
-st.header("🐦 Tweet Generator")
+tweet_template = """
+Generate {number} engaging tweets on the topic: {topic}
 
-st.subheader("Generate tweets using Generative AI 🤖")
+Make them:
+- Short
+- Catchy
+- Professional
+- Ready for Twitter/X
+"""
 
-# Text input for the user to specify a tweet topic
-topic = st.text_input("Topic")
+prompt = PromptTemplate(
+    input_variables=["number", "topic"],
+    template=tweet_template
+)
 
-# Numeric input to select how many tweets to generate (between 1 and 10)
-number = st.number_input("Number of tweets", min_value = 1, max_value = 10, value = 1, step = 1)
+# ============================================================
+# LangChain Chain
+# ============================================================
 
-# Generate button - invokes the LangChain pipeline and displays the results
-if st.button("Generate"):
-    tweets = tweet_chain.invoke({"number" : number, "topic" : topic})
-    st.write(tweets.content)
+tweet_chain = prompt | llm
+
+# ============================================================
+# Streamlit UI
+# ============================================================
+
+st.header("🐦 AI Tweet Generator")
+st.write("Generate tweets using Gemini AI")
+
+topic = st.text_input("Enter Topic")
+
+number = st.number_input(
+    "Number of Tweets",
+    min_value=1,
+    max_value=10,
+    value=1
+)
+
+# ============================================================
+# Generate Tweets
+# ============================================================
+
+if st.button("Generate Tweets"):
+
+    if topic.strip() == "":
+        st.warning("Please enter a topic")
+    else:
+        with st.spinner("Generating Tweets..."):
+
+            response = tweet_chain.invoke({
+                "number": number,
+                "topic": topic
+            })
+
+            st.success("Tweets Generated Successfully!")
+
+            st.write(response.content)
     
